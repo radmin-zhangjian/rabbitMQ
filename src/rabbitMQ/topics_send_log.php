@@ -29,9 +29,9 @@ use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
 
-$routing_key = isset($argv[1]) && !empty($argv[1]) ? $argv[1] : 'anonymous.info';
-$data = implode(' ', array_slice($argv, 2));
-(new TopicsSend($routing_key))->send($data);
+//$routing_key = isset($argv[1]) && !empty($argv[1]) ? $argv[1] : 'anonymous.info';
+//$data = implode(' ', array_slice($argv, 2));
+//(new TopicsSend($routing_key))->send($data);
 
 class TopicsSend
 {
