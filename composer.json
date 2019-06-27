@@ -1,0 +1,26 @@
+{
+    "name": "yuqinglan/rabbitmq",
+    "description": "RabbitMQ 第一版测试",
+    "type": "library",
+    "require": {
+        "php": ">=7.0",
+        "php-amqplib/php-amqplib": ">=2.6.1"
+    },
+    "require-dev": {
+        "php": ">=7.0",
+        "php-amqplib/php-amqplib": ">=2.6.1"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "zhangjian",
+            "email": "6204000@qq.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "zhangjian\\rabbitMQ\\": ""
+        }
+    }
+}
