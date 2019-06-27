@@ -24,12 +24,19 @@ $ composer require yuqinglan/rabbitmq
 php topics_receive_log.php anonymous.error
 php topics_receive_log.php anonymous.waring
 php topics_receive_log.php anonymous.*
-...
-
+#
 # 生产者
 php topics_send_log.php anonymous.info
 php topics_send_log.php anonymous.error
 php topics_send_log.php anonymous.waring
+#
+# 封装 消费者
+$binding_keys = array_slice($argv, 1);
+(new TopicsReceive($binding_keys))->worker();
+# 封装 生产者
+$routing_key = isset($argv[1]) && !empty($argv[1]) ? $argv[1] : 'anonymous.info';
+$data = implode(' ', array_slice($argv, 2));
+(new TopicsSend($routing_key))->send($data);
 
 ```
 

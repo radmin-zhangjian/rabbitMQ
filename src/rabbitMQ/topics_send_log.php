@@ -20,49 +20,104 @@
 /**
  * 生产者 主题
  */
+
+namespace zhangjian\rabbitMQ;
+
+
 require_once __DIR__ . '/../../vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-/**
- * 创建链接
- */
-$connection = new AMQPStreamConnection('localhost', 5672, 'zhangjian', 'zhangjian');
-$channel = $connection->channel();
 
-/**
- * 声明交换 创建交换机logs
- * fanout = 扇出交换
- * direct = 直接交换
- * topic = 主题交换
- */
-$channel->exchange_declare('topic_logs', 'topic', false, false, false);
-
-/**
- * 接收数据
- * 设置队列名称 默认：anonymous.info [anonymous.waring, anonymous.error] / anonymous.* / anonymous.#
- */
 $routing_key = isset($argv[1]) && !empty($argv[1]) ? $argv[1] : 'anonymous.info';
 $data = implode(' ', array_slice($argv, 2));
-if (empty($data)) {
-    $data = "Hello World!";
+(new TopicsSend($routing_key))->send($data);
+
+class TopicsSend
+{
+    /**
+     * @var AMQPStreamConnection
+     */
+    public $connection;
+
+    /**
+     * @var \PhpAmqpLib\Channel\AMQPChannel
+     */
+    public $channel;
+
+    /**
+     * @var array $argv
+     */
+    protected $argv;
+
+    /**
+     * @var string $data
+     */
+    protected $data;
+
+    public function __construct($argv)
+    {
+        $this->connection = new AMQPStreamConnection(
+            'localhost',
+            5672,
+            'zhangjian',
+            'zhangjian',
+            '/',
+            false,
+            'AMQPLAIN',
+            null,
+            'en_US',
+            3.0,
+            130,
+            null,
+            false,
+            0
+        );
+        $this->channel = $this->connection->channel();
+        $this->argv = $argv;
+    }
+
+    public function send($data)
+    {
+        /**
+         * 声明交换 创建交换机logs
+         * fanout = 扇出交换
+         * direct = 直接交换
+         * topic = 主题交换
+         */
+        $this->channel->exchange_declare('topic_logs', 'topic', false, false, false);
+
+        /**
+         * 接收数据
+         * 设置队列名称 默认：anonymous.info [anonymous.waring, anonymous.error] / anonymous.* / anonymous.#
+         */
+        $routing_key = isset($this->argv) && !empty($this->argv) ? $this->argv : 'anonymous.info';
+        if (empty($data)) {
+            $data = "Hello World!";
+        }
+
+        /**
+         * 发布到队列
+         * 同一个交换机[topic_logs]下 可以创建多个不同队列 $routing_key
+         */
+        $msg = new AMQPMessage($data);
+        $this->channel->basic_publish($msg, 'topic_logs', $routing_key);
+
+        // 测试
+        for ($i=0; $i<10; $i++) {
+            sleep(1);
+            $msg = new AMQPMessage($data . '_' . $i);
+            $this->channel->basic_publish($msg, 'topic_logs', $routing_key);
+        }
+
+        echo ' [x] Sent ', $routing_key, ':', $data, "\n";
+
+    }
+
+    public function __destruct()
+    {
+        $this->channel->close();
+        $this->connection->close();
+    }
+
 }
-
-/**
- * 发布到队列
- * 同一个交换机[topic_logs]下 可以创建多个不同队列 $routing_key
- */
-$msg = new AMQPMessage($data);
-$channel->basic_publish($msg, 'topic_logs', $routing_key);
-
-// 测试
-for ($i=0; $i<10; $i++) {
-    sleep(1);
-    $msg = new AMQPMessage($data . '_' . $i);
-    $channel->basic_publish($msg, 'topic_logs', $routing_key);
-}
-
-echo ' [x] Sent ', $routing_key, ':', $data, "\n";
-
-$channel->close();
-$connection->close();
