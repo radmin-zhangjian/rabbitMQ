@@ -23,7 +23,7 @@
 namespace zhangjian\rabbitMQ;
 
 
-require_once __DIR__ . '/../../vendor/autoload.php';
+//require_once __DIR__ . '/../../vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 ini_set('default_socket_timeout', 120);
 
