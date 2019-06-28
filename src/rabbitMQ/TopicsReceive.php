@@ -29,7 +29,7 @@ ini_set('default_socket_timeout', 120);
 
 
 //$binding_keys = array_slice($argv, 1);
-//(new TopicsReceive($binding_keys))->worker();
+//(new TopicsReceive($binding_keys, ['heartbeat' => 0]))->worker();
 
 class TopicsReceive
 {
@@ -48,23 +48,41 @@ class TopicsReceive
      */
     protected $argv;
 
-    public function __construct($argv)
+    public function __construct($argv, $param = [])
     {
+        $host = isset($param['host']) && !empty($param['host']) ? $param['host'] : 'localhost';
+        $port = isset($param['port']) && !empty($param['port']) ? $param['port'] : 5672;
+        $user = isset($param['user']) && !empty($param['user']) ? $param['user'] : 'zhangjian';
+        $password = isset($param['password']) && !empty($param['password']) ? $param['password'] : 'zhangjian';
+        $vhost = isset($param['vhost']) && !empty($param['vhost']) ? $param['vhost'] : '/';
+        $insist = isset($param['insist']) && !empty($param['insist']) ? $param['insist'] : false;
+        $login_method = isset($param['login_method']) && !empty($param['login_method']) ? $param['login_method'] : 'AMQPLAIN';
+        $login_response = isset($param['login_response']) && !empty($param['login_response']) ? $param['login_response'] : null;
+        $locale = isset($param['locale']) && !empty($param['locale']) ? $param['locale'] : 'en_US';
+        $connection_timeout = isset($param['connection_timeout']) && !empty($param['connection_timeout']) ? $param['connection_timeout'] : 3.0;
+        $read_write_timeout = isset($param['read_write_timeout']) && !empty($param['read_write_timeout']) ? $param['read_write_timeout'] : 130;
+        $context = isset($param['context']) && !empty($param['context']) ? $param['context'] : null;
+        $keepalive = isset($param['keepalive']) && !empty($param['keepalive']) ? $param['keepalive'] : false;
+        $heartbeat = isset($param['heartbeat']) && !empty($param['heartbeat']) ? $param['heartbeat'] : 60;
+        $channel_rpc_timeout = isset($param['channel_rpc_timeout']) && !empty($param['channel_rpc_timeout']) ? $param['channel_rpc_timeout'] : 0.0;
+        $ssl_protocol = isset($param['ssl_protocol']) && !empty($param['ssl_protocol']) ? $param['ssl_protocol'] : null;
         $this->connection = new AMQPStreamConnection(
-            'localhost',
-            5672,
-            'zhangjian',
-            'zhangjian',
-            '/',
-            false,
-            'AMQPLAIN',
-            null,
-            'en_US',
-            3.0,
-            130,
-            null,
-            false,
-            0
+            $host,
+            $port,
+            $user,
+            $password,
+            $vhost,
+            $insist,
+            $login_method,
+            $login_response,
+            $locale,
+            $connection_timeout,
+            $read_write_timeout,
+            $context,
+            $keepalive,
+            $heartbeat,
+            $channel_rpc_timeout,
+            $ssl_protocol
         );
         $this->channel = $this->connection->channel();
         $this->argv = $argv;
@@ -110,7 +128,21 @@ class TopicsReceive
          * 回调函数
          */
         $callback = function($msg) {
-            echo ' [x] ', $msg->delivery_info['routing_key'], ':', $msg->body, "\n";
+//            echo ' [x] ', $msg->delivery_info['routing_key'], ':', $msg->body, "\n";
+            $key = $msg->delivery_info['routing_key'];
+            $data = json_decode($msg->body, true);
+            if (!empty($data)) {
+                if ($key == $data['key']) {
+                    $dataStr = http_build_query($data['data']);
+                    $header = isset($data['header']) ? $data['header'] : '';
+                    $isPost = isset($data['isPost']) ? $data['isPost'] : true;
+                    $timeout = isset($data['timeout']) ? $data['timeout'] : 5;
+                    $response = self::curl($data['url'], $header, $dataStr, $isPost, $timeout);
+                    echo date('Y-m-d H:i:s', time()) . "：" . $response . "\n";
+                } else {
+                    echo "key错误:{$data['key']}-{$key}-".json_encode($data['data'])."\n";
+                }
+            }
         };
 
         /**
@@ -133,4 +165,42 @@ class TopicsReceive
 //        $this->channel->close();
 //        $this->connection->close();
     }
+
+    // 签名附加在 HTTP header 中，字段名为 x-izayoi-sign
+    public static function curl($url, $header = [], $dataStr = "", $isPost = false, $timeOut = 20, $referer = '', $cookie = '')
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeOut);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeOut);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        if ($header) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        }
+        if ($referer) {
+            curl_setopt($ch, CURLOPT_REFERER, $referer);
+        } else {
+            curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        }
+        if ($isPost) {
+            if ($cookie) {
+                curl_setopt($ch, CURLOPT_COOKIE, $cookie);
+            }
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $dataStr);
+            curl_setopt($ch, CURLOPT_URL, $url);
+        } else {
+            if (empty($dataStr)) {
+                curl_setopt($ch, CURLOPT_URL, $url);
+            } else {
+                curl_setopt($ch, CURLOPT_URL, $url . '?' . $dataStr);
+            }
+        }
+        $response = curl_exec($ch);
+        curl_close($ch);
+        return $response;
+    }
+
 }
