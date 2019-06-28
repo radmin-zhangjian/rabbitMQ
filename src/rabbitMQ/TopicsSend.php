@@ -84,7 +84,17 @@ class TopicsSend
      */
     protected $data;
 
-    public function __construct($argv, $param = [])
+    /**
+     * @var string $exchange
+     */
+    protected $exchange;
+
+    /**
+     * @var string $type
+     */
+    protected $type;
+
+    public function __construct($argv, $param = [], $exchange = 'anonymous', $type = 'topic')
     {
         $host = isset($param['host']) && !empty($param['host']) ? $param['host'] : 'localhost';
         $port = isset($param['port']) && !empty($param['port']) ? $param['port'] : 5672;
@@ -122,6 +132,8 @@ class TopicsSend
         );
         $this->channel = $this->connection->channel();
         $this->argv = $argv;
+        $this->exchange = $exchange;
+        $this->type = $type;
     }
 
     public function send($data)
@@ -132,7 +144,7 @@ class TopicsSend
          * direct = 直接交换
          * topic = 主题交换
          */
-        $this->channel->exchange_declare('topic_logs', 'topic', false, false, false);
+        $this->channel->exchange_declare($this->exchange, $this->type, false, false, false);
 
         /**
          * 接收数据
@@ -145,10 +157,10 @@ class TopicsSend
 
         /**
          * 发布到队列
-         * 同一个交换机[topic_logs]下 可以创建多个不同队列 $routing_key
+         * 同一个交换机[Exchanges]下 可以创建多个不同队列 $routing_key
          */
         $msg = new AMQPMessage(json_encode($data));
-        $this->channel->basic_publish($msg, 'topic_logs', $routing_key);
+        $this->channel->basic_publish($msg, $this->exchange, $routing_key);
 
         return ['code' => 0, 'msg' => 'success', 'key' => $routing_key, 'data' => json_encode($data)];
 

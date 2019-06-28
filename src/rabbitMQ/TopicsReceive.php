@@ -48,7 +48,17 @@ class TopicsReceive
      */
     protected $argv;
 
-    public function __construct($argv, $param = [])
+    /**
+     * @var string $exchange
+     */
+    protected $exchange;
+
+    /**
+     * @var string $type
+     */
+    protected $type;
+
+    public function __construct($argv, $param = [], $exchange = 'anonymous', $type = 'topic')
     {
         $host = isset($param['host']) && !empty($param['host']) ? $param['host'] : 'localhost';
         $port = isset($param['port']) && !empty($param['port']) ? $param['port'] : 5672;
@@ -86,6 +96,8 @@ class TopicsReceive
         );
         $this->channel = $this->connection->channel();
         $this->argv = $argv;
+        $this->exchange = $exchange;
+        $this->type = $type;
     }
 
     public function worker()
@@ -96,7 +108,7 @@ class TopicsReceive
          * direct = 直接交换
          * topic = 主题交换
          */
-        $this->channel->exchange_declare('topic_logs', 'topic', false, false, false);
+        $this->channel->exchange_declare($this->exchange, $this->type, false, false, false);
 
         /**
          * 持久性
@@ -116,10 +128,10 @@ class TopicsReceive
 
         /**
          * 交换和队列之间进行绑定
-         * 同一个交换机[topic_logs]下 可以创建多个不同队列 $routing_key
+         * 同一个交换机[Exchanges]下 可以创建多个不同队列 $routing_key
          */
         foreach ($binding_keys as $binding_key) {
-            $this->channel->queue_bind($queue_name, 'topic_logs', $binding_key);
+            $this->channel->queue_bind($queue_name, $this->exchange, $binding_key);
         }
 
         echo " [*] Waiting for logs. To exit press CTRL+C\n";
