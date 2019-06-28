@@ -32,9 +32,9 @@ use PhpAmqpLib\Message\AMQPMessage;
 //$routing_key = isset($argv[1]) && !empty($argv[1]) ? $argv[1] : 'anonymous.info';
 //$send = new TopicsSend($routing_key);
 //$data = implode(' ', array_slice($argv, 2));
-//$url = 'http://test-www.cheoo.com/baseApi/';
+//$url = 'http://www.baidu.com';
 //$infoData = [
-//    'url' => $url . "/saas/sendJpush",  // 业务逻辑地址
+//    'url' => $url . "/",  // 业务逻辑地址
 //    'header' => '',  // 非必填
 //    'isPost' => true,  // 非必填
 //    'timeout' => 10,  // 非必填
